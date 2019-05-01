@@ -9,7 +9,8 @@
     "mqtt",
     "symfony",
     "messenger",
-    "component"
+    "component",
+    "symfony-messenger"
   ],
   "homepage" : "https://github.com/vs-point/messenger-transport-mqtt",
   "authors" : [
