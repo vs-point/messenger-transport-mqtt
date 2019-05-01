@@ -44,7 +44,7 @@ framework:
 Example:
 ```bash
 # .env
-MESSENGER_MQTT_TRANSPORT_DSN=mqtt://user:pass@server.com:13193
+MESSENGER_MQTT_TRANSPORT_DSN=mqtt://user:pass@server:1883
 MQTT_CLIENT_ID=symfonyclient
 ```
 
