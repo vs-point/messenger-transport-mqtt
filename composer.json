@@ -1,0 +1,46 @@
+{
+  "name": "vs-point/messenger-transport-mqtt",
+  "description": "The Messenger component",
+  "license": [
+    "MIT"
+  ],
+  "keywords" : [
+    "mqtt",
+    "symfony",
+    "messenger",
+    "component"
+  ],
+  "homepage" : "https://github.com/vs-point/messenger-transport-mqtt",
+  "authors" : [
+    {
+      "name" : "Vít Steklý",
+      "email" : "stekly.vit@vs-point.cz",
+      "homepage" : "https://www.vs-point.cz"
+    }
+  ],
+  "require": {
+    "ext-mosquitto": "*",
+    "php": "~7.1",
+    "symfony/messenger": "^4"
+  },
+  "require-dev": {
+    "ext-intl": "*"
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "autoload": {
+    "psr-4": {
+      "VSPoint\\": [
+        "src/"
+      ]
+    }
+  },
+  "autoload-dev": {
+    "classmap": [
+      "tests"
+    ]
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
