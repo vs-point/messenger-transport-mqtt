@@ -1,5 +1,6 @@
 <?php
-namespace VSPoint\Mqtt;
+
+namespace VSPoint\Messenger\Transport\Mqtt;
 
 class MqttMessage implements MqttMessageInterface
 {

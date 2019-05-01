@@ -47,3 +47,117 @@ Example:
 MESSENGER_MQTT_TRANSPORT_DSN=mqtt://user:pass@server.com:13193
 MQTT_CLIENT_ID=symfonyclient
 ```
+
+## Usage
+
+```php
+<?php
+
+namespace App;
+
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\RouterInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+
+class Scenario {
+
+    /** @var MessageBusInterface  */
+    private $bus;
+
+    public function __construct(MessageBusInterface $bus)
+    {
+        $this->bus = $bus;
+    }
+
+    public function __invoke(string $section = 'ALL')
+    {
+        $this->bus->dispatch(new StateMessage($section, 'newState'));
+    }
+
+}
+```
+
+```php
+<?php
+
+namespace App;
+
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\RouterInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+
+class Controller {
+
+    /** @var MessageBusInterface  */
+    private $bus;
+
+    /** @var RouterInterface */
+    private $router;
+
+    /** @var Scenario  */
+    private $stateScenario;
+
+    public function __construct(MessageBusInterface $bus, RouterInterface $router, Scenario $stateScenario)
+    {
+        $this->bus = $bus;
+        $this->router = $router;
+        $this->stateScenario = $stateScenario;
+    }
+
+    /**
+     * @Route("/state/{section}",
+     *     name="change.state",
+     *     requirements={"
+     *          section"="all|a|b|c|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))"
+     *     },
+     *     defaults={"section": "all"})
+     */
+    public function __invoke($section)
+    {
+        $stateScenario = $this->stateScenario;
+        $stateScenario($section);
+
+        return new RedirectResponse($this->router->generate('homepage'), 302);
+    }
+
+}
+```
+
+```php
+<?php
+
+namespace App;
+
+use VSPoint\Messenger\Transport\Mqtt\MqttMessage;
+use VSPoint\Messenger\Transport\Mqtt\MqttMessageInterface;
+
+class StateMessage implements MqttMessageInterface
+{
+    public function __construct(string $section, string $state)
+    {
+        $this->topic = '/state/'.$section;
+        $this->message = $state;
+    }
+
+    private $topic;
+    private $message;
+
+    public function getTopic(): string
+    {
+        return $this->topic;
+    }
+
+    public function getQos(): int
+    {
+        return 1;
+    }
+
+    public function getBody(): string
+    {
+        return $this->message;
+    }
+
+}
+```

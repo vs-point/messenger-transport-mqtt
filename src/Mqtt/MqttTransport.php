@@ -1,6 +1,6 @@
 <?php
 
-namespace VSPoint\Mqtt;
+namespace VSPoint\Messenger\Transport\Mqtt;
 
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Transport\TransportInterface;

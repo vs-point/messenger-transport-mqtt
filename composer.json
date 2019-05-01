@@ -32,7 +32,7 @@
   },
   "autoload": {
     "psr-4": {
-      "VSPoint\\": [
+      "VSPoint\\Messenger\\Transport\\": [
         "src/"
       ]
     }
