@@ -1,6 +1,7 @@
 {
   "name": "vs-point/messenger-transport-mqtt",
-  "description": "The Messenger component",
+  "type": "library",
+  "description": "Symfony Messenger transport for the MQTT.",
   "license": [
     "MIT"
   ],
@@ -21,7 +22,7 @@
   "require": {
     "ext-mosquitto": "*",
     "php": "~7.1",
-    "symfony/messenger": "^4"
+    "symfony/messenger": "^4.2.0"
   },
   "require-dev": {
     "ext-intl": "*"
