@@ -19,7 +19,7 @@ composer require vs-point/messenger-transport-mqtt
 
 ```yaml
 #  config/services.yaml
-VSPoint\Mqtt\MqttTransportFactory:
+VSPoint\Messenger\Transport\Mqtt\MqttTransportFactory:
     arguments:
         $topics: ['/topic1','/topic2']
         $clientId: '%env(MQTT_CLIENT_ID)%'
