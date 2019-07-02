@@ -29,13 +29,14 @@ class MqttTransport implements TransportInterface
         $this->topics = $topics;
     }
 
-    public function send(Envelope $envelope): void
+    public function send(Envelope $envelope): Envelope
     {
         if($envelope->getMessage() instanceof MqttMessageInterface) {
             $this->connect();
             $this->client->publish($envelope->getMessage()->getTopic(), $envelope->getMessage()->getBody(), $envelope->getMessage()->getQos());
             $this->client->loop();
         }
+        return $envelope;
     }
 
     public function receive(callable $handler): void
