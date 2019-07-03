@@ -4,7 +4,7 @@ namespace VSPoint\Messenger\Transport\Mqtt;
 
 use Symfony\Component\Messenger\Transport\TransportFactoryInterface;
 use Symfony\Component\Messenger\Transport\TransportInterface;
-use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
 class MqttTransportFactory implements TransportFactoryInterface
 {
@@ -12,18 +12,19 @@ class MqttTransportFactory implements TransportFactoryInterface
     private $topics;
     private $clientId;
 
-    public function __construct(array $topics, SerializerInterface $serializer, ?string $clientId = null)
+    public function __construct(array $topics, ?string $clientId = null)
     {
-        $this->serializer = $serializer;
         $this->topics = $topics;
         $this->clientId = $clientId;
     }
 
-    public function createTransport(string $dsn, array $options): TransportInterface
+    public function createTransport(string $dsn, array $options, SerializerInterface $serializer): TransportInterface
     {
         if (false === $parsedUrl = parse_url($dsn)) {
             throw new InvalidArgumentException(sprintf('The given AMQP DSN "%s" is invalid.', $dsn));
         }
+
+        $this->serializer = $serializer;
 
         $pathParts = isset($parsedUrl['path']) ? explode('/', trim($parsedUrl['path'], '/')) : array();
 
