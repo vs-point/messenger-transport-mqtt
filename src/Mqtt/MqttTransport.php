@@ -3,6 +3,7 @@
 namespace VSPoint\Messenger\Transport\Mqtt;
 
 use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Transport\Receiver\ReceiverInterface;
 use Symfony\Component\Messenger\Transport\TransportInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 
@@ -39,13 +40,25 @@ class MqttTransport implements TransportInterface
         return $envelope;
     }
 
-    public function receive(callable $handler): void
+    public function get(): iterable
     {
+        foreach ($this->connection->getQueueNames() as $queueName) {
+            yield from $this->getEnvelope($queueName);
+        }
         $this->client->onMessage(function($message) use ($handler) {
-            $handler(new MqttMessage($message->topic,$message->qos,$message->payload,$message->mid));
+            yield from new MqttMessage($message->topic,$message->qos,$message->payload,$message->mid);
         });
         $this->subscribe();
         $this->client->loopForever();
+    }
+
+    public function ack(Envelope $envelope): void
+    {
+    }
+
+    public function reject(Envelope $envelope): void
+    {
+
     }
 
     public function stop(): void
