@@ -1,0 +1,18 @@
+services:
+  php:
+    build: .
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      MQTT_HOST: mqtt
+      MQTT_PORT: 1883
+    depends_on:
+      - mqtt
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./docker/mosquitto:/mosquitto/config

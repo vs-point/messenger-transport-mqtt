@@ -1,52 +1,64 @@
 <?php
 
+declare(strict_types=1);
+
 namespace VSPoint\Messenger\Transport\Mqtt;
 
+use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Symfony\Component\Messenger\Transport\TransportFactoryInterface;
 use Symfony\Component\Messenger\Transport\TransportInterface;
-use Symfony\Component\Serializer\SerializerInterface;
 
+/**
+ * @implements TransportFactoryInterface<MqttTransport>
+ */
 class MqttTransportFactory implements TransportFactoryInterface
 {
-    private $serializer;
-    private $topics;
-    private $clientId;
-
-    public function __construct(array $topics, SerializerInterface $serializer, ?string $clientId = null)
-    {
-        $this->serializer = $serializer;
-        $this->topics = $topics;
-        $this->clientId = $clientId;
+    /**
+     * @param string[] $topics
+     */
+    public function __construct(
+        private readonly array $topics,
+        private readonly ?string $clientId = null,
+    ) {
     }
 
-    public function createTransport(string $dsn, array $options): TransportInterface
+    /**
+     * @param array<string, mixed> $options
+     */
+    public function createTransport(string $dsn, array $options, SerializerInterface $serializer): TransportInterface
     {
         if (false === $parsedUrl = parse_url($dsn)) {
-            throw new InvalidArgumentException(sprintf('The given AMQP DSN "%s" is invalid.', $dsn));
+            throw new \InvalidArgumentException(sprintf('The given MQTT DSN "%s" is invalid.', $dsn));
         }
 
-        $pathParts = isset($parsedUrl['path']) ? explode('/', trim($parsedUrl['path'], '/')) : array();
+        $pathParts = isset($parsedUrl['path']) ? explode('/', trim($parsedUrl['path'], '/')) : [];
 
-        $credentials = array_replace_recursive(array(
+        /** @var array<string, mixed> $credentials */
+        $credentials = array_replace_recursive([
             'host' => $parsedUrl['host'] ?? 'localhost',
             'port' => $parsedUrl['port'] ?? 1883,
-            'client_id' => $this->clientId ?? getmypid(),
+            'client_id' => $this->clientId ?? (string) getmypid(),
             'vhost' => isset($pathParts[0]) ? urldecode($pathParts[0]) : '/',
-        ), $options);
-
+            'login' => '',
+            'password' => '',
+        ], $options);
 
         if (isset($parsedUrl['user'])) {
             $credentials['login'] = $parsedUrl['user'];
         }
+
         if (isset($parsedUrl['pass'])) {
             $credentials['password'] = $parsedUrl['pass'];
         }
 
-        return new MqttTransport($credentials, $this->topics, $this->serializer);
+        return new MqttTransport($credentials, $this->topics);
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function supports(string $dsn, array $options): bool
     {
-        return 0 === strpos($dsn, 'mqtt://');
+        return str_starts_with($dsn, 'mqtt://');
     }
 }

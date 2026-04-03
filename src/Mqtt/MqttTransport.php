@@ -1,91 +1,129 @@
 <?php
 
+declare(strict_types=1);
+
 namespace VSPoint\Messenger\Transport\Mqtt;
 
+use PhpMqtt\Client\ConnectionSettings;
+use PhpMqtt\Client\MqttClient;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Transport\TransportInterface;
-use Symfony\Component\Serializer\SerializerInterface;
 
 class MqttTransport implements TransportInterface
 {
-    private $credentials;
+    private MqttClient|null $client = null;
 
-    /** @var \Mosquitto\Client */
-    private $client;
-
-    /** @var bool */
-    private $connected;
-
-    /** @var bool */
-    private $shouldStop;
-
-    /** @var array */
-    private $topics;
-
-    public function __construct(array $credentials, array $topics)
-    {
-        $this->credentials = $credentials;
-        $this->connected = false;
-        $this->topics = $topics;
-    }
-
-    public function send(Envelope $envelope): void
-    {
-        if($envelope->getMessage() instanceof MqttMessageInterface) {
-            $this->connect();
-            $this->client->publish($envelope->getMessage()->getTopic(), $envelope->getMessage()->getBody(), $envelope->getMessage()->getQos());
-            $this->client->loop();
-        }
-    }
-
-    public function receive(callable $handler): void
-    {
-        $this->client->onMessage(function($message) use ($handler) {
-            $handler(new MqttMessage($message->topic,$message->qos,$message->payload,$message->mid));
-        });
-        $this->subscribe();
-        $this->client->loopForever();
-    }
-
-    public function stop(): void
-    {
-        $this->client->exitLoop();
-        if(isset($this->client)) {
-            $this->client->disconnect();
-        }
-    }
+    private bool $initialized = false;
 
     /**
-     * Creates new instance of a MQTT client
-     *
-     * @return \Mosquitto\Client
+     * @var Envelope[]
      */
-    private function createClient(): \Mosquitto\Client
+    private array $pendingEnvelopes = [];
+
+    /**
+     * @param array<string, mixed> $credentials
+     * @param string[] $topics
+     */
+    public function __construct(
+        private readonly array $credentials,
+        private readonly array $topics,
+    ) {
+    }
+
+    public function get(): iterable
     {
-        $client = new \Mosquitto\Client($this->credentials['client_id'],false);
-        $client->setCredentials($this->credentials['login'], $this->credentials['password']);
-        $client->onDisconnect(function(){
-            $this->connected = false;
-        });
+        $this->initialize();
+        $this->loopUntilDeadline(0.1);
 
-        return $client;
+        $envelopes = $this->pendingEnvelopes;
+        $this->pendingEnvelopes = [];
+
+        return $envelopes;
     }
 
-    private function connect() {
-        if(!isset($this->client)) {
-            $this->client = $this->createClient();
-        }
-        if($this->connected == false) {
-            $this->client->connect($this->credentials['host'],$this->credentials['port']);
-            $this->connected = true;
-        }
+    public function ack(Envelope $envelope): void
+    {
+        // MQTT handles acknowledgment at protocol level via QoS
     }
 
-    private function subscribe() {
+    public function reject(Envelope $envelope): void
+    {
+        // MQTT does not support message rejection
+    }
 
-        $this->connect();
+    public function send(Envelope $envelope): Envelope
+    {
+        $message = $envelope->getMessage();
+
+        if ($message instanceof MqttMessageInterface) {
+            $this->connectClient();
+            $this->client->publish($message->getTopic(), $message->getBody(), $message->getQos());
+
+            if ($message->getQos() > MqttClient::QOS_AT_MOST_ONCE) {
+                $this->loopUntilDeadline(0.3);
+            }
+        }
+
+        return $envelope;
+    }
+
+    private function initialize(): void
+    {
+        if ($this->initialized) {
+            return;
+        }
+
+        $this->connectClient();
+
         foreach ($this->topics as $topic) {
-            $this->client->subscribe($topic, 0);
+            $this->client->subscribe(
+                $topic,
+                function (string $topic, string $message): void {
+                    $this->pendingEnvelopes[] = new Envelope(
+                        new MqttMessage($topic, 0, $message, uniqid('mqtt_', true))
+                    );
+                },
+                MqttClient::QOS_AT_MOST_ONCE,
+            );
+        }
+
+        $this->initialized = true;
+    }
+
+    private function loopUntilDeadline(float $seconds): void
+    {
+        $deadline = microtime(true) + $seconds;
+        $handler = function (MqttClient $client, float $elapsedTime) use ($deadline): void {
+            if (microtime(true) >= $deadline) {
+                $client->interrupt();
+            }
+        };
+
+        $this->client->registerLoopEventHandler($handler);
+        $this->client->loop(allowSleep: false);
+        $this->client->unregisterLoopEventHandler($handler);
+    }
+
+    private function connectClient(): void
+    {
+        if ($this->client === null) {
+            $this->client = new MqttClient(
+                $this->credentials['host'],
+                $this->credentials['port'],
+                $this->credentials['client_id'],
+            );
+        }
+
+        if (!$this->client->isConnected()) {
+            $settings = new ConnectionSettings();
+
+            if ($this->credentials['login'] !== '') {
+                $settings = $settings
+                    ->setUsername($this->credentials['login'])
+                    ->setPassword($this->credentials['password']);
+            }
+
+            $this->client->connect($settings);
         }
     }
 }
