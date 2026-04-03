@@ -30,6 +30,13 @@ class MqttTransport implements TransportInterface
     ) {
     }
 
+    public function __destruct()
+    {
+        if ($this->client !== null && $this->client->isConnected()) {
+            $this->client->disconnect();
+        }
+    }
+
     public function get(): iterable
     {
         $this->initialize();
@@ -115,7 +122,8 @@ class MqttTransport implements TransportInterface
         }
 
         if (!$this->client->isConnected()) {
-            $settings = new ConnectionSettings();
+            $settings = (new ConnectionSettings())
+                ->setReconnectAutomatically(true);
 
             if ($this->credentials['login'] !== '') {
                 $settings = $settings
